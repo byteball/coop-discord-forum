@@ -1,0 +1,43 @@
+// Prisma schema for the contribution-log service.
+// SQLite database mirrors Discord forum posts, reactions and activity.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// A forum post = a Discord thread under a GuildForum channel.
+model Post {
+  id             String   @id // Discord thread id (the post)
+  discordUserId  String // author's Discord user id (snowflake)
+  obyteAddress   String? // attested Obyte address, if the author has an attestation
+  title          String
+  description    String   @default("")
+  notified       Boolean  @default(false) // whether profile links were already posted (idempotent reply)
+  createdAt      DateTime
+  lastActivityAt DateTime
+  deletedAt      DateTime? // set when the post (thread) is deleted on Discord; hidden from the API
+
+  reactions Reaction[]
+
+  @@index([discordUserId])
+  @@index([discordUserId, lastActivityAt])
+}
+
+/// One row per (post, user, emoji) — standard unicode reactions on the post's starter
+/// message. Custom (guild) emojis are skipped: they're not portable to other sites.
+model Reaction {
+  id     Int    @id @default(autoincrement())
+  postId String
+  userId String // Discord user id of the reactor
+  emoji  String // standard unicode emoji char, e.g. "👍"
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, emoji])
+  @@index([postId])
+}
