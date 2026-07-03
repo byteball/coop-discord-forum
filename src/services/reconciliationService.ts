@@ -97,8 +97,8 @@ async function collectThreads(
 }
 
 /**
- * Startup catch-up: walk every tracked forum, (re)record each post, post profile
- * links for any post we hadn't notified yet, and re-sync reaction counts.
+ * Startup catch-up: walk every tracked forum, (re)record each post, post the automated
+ * reply for any post we hadn't notified yet, and re-sync reaction counts.
  */
 export async function syncAllForums(client: Client) {
   const forums = await resolveForumChannels(client)
@@ -107,7 +107,7 @@ export async function syncAllForums(client: Client) {
     return
   }
 
-  // First run on an existing forum: backfill silently so we don't blast profile-link
+  // First run on an existing forum: backfill silently so we don't blast automated
   // replies into many old threads. New posts after startup still get replies (threadCreate).
   const silent = (await prisma.post.count()) === 0
   if (silent) {

@@ -1,20 +1,29 @@
 import type { ThreadChannel } from 'discord.js'
-import { buildProfileLinks } from './attestationService.js'
+import { env } from '../env.js'
 
-const capitalize = (s: string) => (s.length ? s[0].toUpperCase() + s.slice(1) : s)
-
-/** Publicly reply in the forum thread with the author's Obyte profile links. */
-export async function replyWithProfileLinks(thread: ThreadChannel, address: string) {
-  const links = buildProfileLinks(address)
-  if (links.length === 0) return
-
-  const lines = links.map((l) => `• ${capitalize(l.project)}: ${l.url}`)
-  const content = [
-    'Thanks for your post! 🎉',
-    'Your Obyte ecosystem profiles:',
-    ...lines,
-  ].join('\n')
-
-  // never ping anyone from an automated message
+/**
+ * Publicly reply in the forum thread with a vote link to the author's COOP profile.
+ * Never pings — the <@id> mention still renders as @username for readers.
+ */
+export async function replyWithVoteLink(
+  thread: ThreadChannel,
+  discordUserId: string,
+  address: string,
+) {
+  const url = `${env.COOP_BASE_URL}/user/${address}`
+  // [text](<url>) — angle brackets suppress Discord's embed preview card
+  const content = `Vote for <@${discordUserId}> at [their COOP profile](<${url}>)`
   await thread.send({ content, allowedMentions: { parse: [] } })
+}
+
+/**
+ * Publicly ask a non-attested author to pair with the attestation bot.
+ * Intentionally pings the author (and only them) — the message is addressed to them.
+ */
+export async function replyWithAttestationPrompt(thread: ThreadChannel, discordUserId: string) {
+  const url = `${env.PUBLIC_BASE_URL}/pair`
+  const content =
+    `<@${discordUserId}> please [link your discord account to your Obyte address](<${url}>) ` +
+    'to make it easier for community members to find you on COOP and vote for you'
+  await thread.send({ content, allowedMentions: { users: [discordUserId] } })
 }

@@ -20,20 +20,29 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
   ])
 }
 
+export type AddressResolution =
+  | { status: 'attested'; address: string }
+  | { status: 'unattested' } // confirmed by the hub: no attestation (cached with a TTL)
+  | { status: 'error' } // transient hub/network failure: unknown, retry later
+
+const toResolution = (value: string | null): AddressResolution =>
+  value ? { status: 'attested', address: value } : { status: 'unattested' }
+
 /**
  * Reverse lookup: Discord user id -> attested Obyte address.
  *
  * `getAttestation` returns only the attestation unit hash, so we read the
  * attested address back from that unit's `attestation` message via `getJoint`.
- * Returns null when the user has no attestation by the configured attestor.
+ * `unattested` means the hub confirmed there is no attestation by the configured
+ * attestor; `error` means the lookup failed and the answer is unknown.
  */
-export async function resolveAddress(discordUserId: string): Promise<string | null> {
+export async function resolveAddress(discordUserId: string): Promise<AddressResolution> {
   const cached = cache.get(discordUserId)
-  if (cached && cached.expires > Date.now()) return cached.value
+  if (cached && cached.expires > Date.now()) return toResolution(cached.value)
 
   const remember = (value: string | null) => {
     cache.set(discordUserId, { value, expires: value ? Infinity : Date.now() + NEGATIVE_TTL_MS })
-    return value
+    return toResolution(value)
   }
 
   try {
@@ -56,19 +65,6 @@ export async function resolveAddress(discordUserId: string): Promise<string | nu
   } catch (err) {
     // transient hub/network error — don't cache, allow a later retry
     console.error(`[attestation] lookup failed for userId=${discordUserId}:`, err)
-    return null
+    return { status: 'error' }
   }
-}
-
-export interface ProfileLink {
-  project: string
-  url: string
-}
-
-/** Build https://<project>.<PROFILE_DOMAIN>/<address> links for each configured project. */
-export function buildProfileLinks(address: string): ProfileLink[] {
-  return env.PROFILE_PROJECTS.map((project) => ({
-    project,
-    url: `https://${project}.${env.PROFILE_DOMAIN}/${address}`,
-  }))
 }

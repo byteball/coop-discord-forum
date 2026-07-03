@@ -17,7 +17,7 @@ model Post {
   obyteAddress   String? // attested Obyte address, if the author has an attestation
   title          String
   description    String   @default("")
-  notified       Boolean  @default(false) // whether profile links were already posted (idempotent reply)
+  notified       Boolean  @default(false) // whether the one automated reply (vote link or attestation prompt) was already posted
   createdAt      DateTime
   lastActivityAt DateTime
   deletedAt      DateTime? // set when the post (thread) is deleted on Discord; hidden from the API

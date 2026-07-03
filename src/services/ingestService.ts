@@ -2,14 +2,15 @@ import type { ThreadChannel } from 'discord.js'
 import { extractPostData, collectStarterReactions } from '../discord/forum.js'
 import { upsertPost, markNotified, setObyteAddress } from './postService.js'
 import { resolveAddress } from './attestationService.js'
-import { replyWithProfileLinks } from './notifyService.js'
+import { replyWithVoteLink, replyWithAttestationPrompt } from './notifyService.js'
 import { syncReactions } from './reactionService.js'
 
 /**
  * Record (or refresh) a forum post from its thread:
  *  - upsert title/description/author/timestamps
- *  - on first sighting, resolve the author's attestation and store the address; unless
- *    `silent`, also post the profile links in the thread (once; tracked via Post.notified)
+ *  - on first sighting, resolve the author's attestation; unless `silent`, post the one
+ *    automated reply (tracked via Post.notified): a COOP vote link for attested authors,
+ *    or a prompt to link their account for non-attested ones
  *  - optionally re-sync all reactions from the live starter message (reconciliation)
  *
  * `silent` is used by the initial backfill so we don't blast replies into many old threads.
@@ -25,19 +26,38 @@ export async function ingestThread(
   const post = await upsertPost(data)
 
   if (!post.notified) {
-    const address = await resolveAddress(data.discordUserId)
-    if (address) {
-      await setObyteAddress(data.postId, address)
+    const res = await resolveAddress(data.discordUserId)
+    if (res.status === 'attested') {
+      await setObyteAddress(data.postId, res.address)
       if (opts.silent) {
         await markNotified(data.postId) // backfill: record it without replying
       } else {
         try {
-          await replyWithProfileLinks(thread, address)
+          await replyWithVoteLink(thread, data.discordUserId, res.address)
           await markNotified(data.postId)
+          console.log(`[ingest] posted COOP vote link in thread ${data.postId} (user ${data.discordUserId})`)
         } catch (err) {
-          console.error(`[ingest] failed to post profile links in thread ${data.postId}:`, err)
+          console.error(`[ingest] failed to post vote link in thread ${data.postId}:`, err)
         }
       }
+    } else if (res.status === 'unattested') {
+      if (opts.silent) {
+        await markNotified(data.postId) // backfill: never blast prompts into old threads
+      } else {
+        try {
+          await replyWithAttestationPrompt(thread, data.discordUserId)
+          await markNotified(data.postId)
+          console.log(`[ingest] posted attestation prompt in thread ${data.postId} (user ${data.discordUserId})`)
+        } catch (err) {
+          console.error(`[ingest] failed to post attestation prompt in thread ${data.postId}:`, err)
+        }
+      }
+    } else {
+      // transient hub failure — send nothing and leave notified=false, so the next
+      // ingest of this post (typically startup reconciliation) retries
+      console.warn(
+        `[ingest] attestation lookup failed for user ${data.discordUserId} — deferring reply in thread ${data.postId}`,
+      )
     }
   }
 

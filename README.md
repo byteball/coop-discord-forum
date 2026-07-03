@@ -4,9 +4,10 @@ A service that mirrors a **Discord forum** into a local database (SQLite + Prism
 over HTTP (Hono). For every forum post it stores the title, description, the author's Discord id
 and the post id; it stores standard (unicode) emoji reactions on the post and bumps a
 last-activity timestamp on new comments.
-When a post's author has an **Obyte attestation**, the bot publicly replies in the thread with
-links to their ecosystem profiles (`city` / `friends` / `coop`). On startup it reconciles against
-Discord so nothing is lost while the service was down.
+For every new post the bot publicly replies in the thread once: if the author has an
+**Obyte attestation**, with a vote link to their COOP profile; otherwise, with a prompt asking
+them to link their Discord account to their Obyte address (via the attestation bot). On startup
+it reconciles against Discord so nothing is lost while the service was down.
 
 ## How it works
 
@@ -26,7 +27,7 @@ The Obyte address for a Discord id is resolved via **obyte.js** (`getAttestation
 | Event | Action |
 |---|---|
 | `clientReady` | startup reconciliation (catch up on anything missed) |
-| `threadCreate` | new post → save + (if attested) reply with profile links in the thread |
+| `threadCreate` | new post → save + reply with a COOP vote link (attested) or an attestation prompt (not attested) |
 | `threadUpdate` | post renamed → update the stored title |
 | `threadDelete` | post deleted → soft-delete it (hidden from the API) |
 | `messageCreate` | comment in a thread → update `lastActivityAt` |
@@ -70,14 +71,15 @@ pnpm db:push           # create the SQLite database from the schema
 | `DISCORD_FORUM_CHANNEL_IDS` | empty | comma-separated forum channel ids; empty = all |
 | `DISCORD_ATTESTOR_ADDRESS` | `5KM36CFPBD2QJLVD65PHZG34WEM4RPY2` | Discord→address attestor |
 | `OBYTE_TESTNET` | `false` | `true` connects to the testnet hub |
-| `PROFILE_DOMAIN` | `obyte.org` | domain for profile links |
-| `PROFILE_PROJECTS` | `city,friends,coop` | projects for profile links |
+| `COOP_BASE_URL` | `https://coop.obyte.org` | base URL for COOP profile links |
+| `PUBLIC_BASE_URL` | — | **required**, public base URL of this API, used in Discord messages (`<PUBLIC_BASE_URL>/pair`) |
+| `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | `obyte:` pairing URI of the attestation bot; `GET /pair` redirects here |
 | `PORT` | `3000` | HTTP server port |
 | `RATE_LIMIT_MAX` | `120` | max requests per IP per window (`0` disables) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | rate-limit window in ms |
 | `TRUST_PROXY` | `false` | behind a trusted proxy: rate-limit by `X-Forwarded-For` client IP (leave off on direct exposure) |
 
-Links are built as `https://<project>.<PROFILE_DOMAIN>/<address>`.
+COOP profile links are built as `<COOP_BASE_URL>/user/<address>`.
 
 ## Running
 
@@ -105,6 +107,7 @@ so request/response schemas, validation and the OpenAPI document all come from o
 | Method & path | Description |
 |---|---|
 | `GET /health` | liveness check |
+| `GET /pair` | 302 redirect to the attestation bot's `obyte:` pairing URI (not in the OpenAPI doc) |
 | `GET /users/{discordUserId}/posts` | a user's posts — sortable & paginated |
 | `GET /posts/{postId}` | a single post by id |
 | `GET /doc` | the OpenAPI 3.0 document (JSON) |
@@ -171,8 +174,12 @@ pnpm db:studio    # Prisma Studio (browse data)
 
 ## Notes
 
-- If a post's author has **no attestation**, the post is still saved (keyed by Discord id), but no
-  profile-links reply is sent.
+- If a post's author has **no attestation**, the post is still saved (keyed by Discord id), and
+  the bot replies once asking the author to link their Discord account to their Obyte address —
+  the link goes through `GET /pair` because Discord doesn't render `obyte:` links. Exactly one
+  automated reply is sent per post (tracked via `Post.notified`), whichever branch applied first.
+  If the attestation lookup fails transiently (hub error/timeout), nothing is sent and the reply
+  is retried at the next ingest of that post (typically startup reconciliation).
 - Reactions are stored one row per `postId + userId + emoji` in the `Reaction` table, which makes
   add/remove handling idempotent. The emoji is validated with `z.emoji()` before storing (custom
   guild emojis are skipped). Startup reconciliation rebuilds the set from the live message. The API

@@ -12,7 +12,7 @@ export const messageCreateHandler: EventHandler<'messageCreate'> = {
     if (isPostStarterMessage(message)) return // the post body, not a comment
 
     // a comment on a thread created before the bot started won't be in the DB yet —
-    // record it silently (a comment must never trigger the profile-links reply)
+    // record it silently (a comment must never trigger the automated reply)
     if (!(await postExists(message.channelId))) {
       await ingestThread(channel, { syncReactions: false, silent: true })
     }

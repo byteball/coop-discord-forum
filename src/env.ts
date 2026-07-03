@@ -25,9 +25,20 @@ export const env = createEnv({
       .optional()
       .default('false')
       .transform((s) => s === 'true' || s === '1'),
-    // Profile links: https://<project>.<PROFILE_DOMAIN>/<address>
-    PROFILE_DOMAIN: z.string().min(1).default('obyte.org'),
-    PROFILE_PROJECTS: csv('city,friends,coop'),
+    // COOP profile link posted in-thread: <COOP_BASE_URL>/user/<address>
+    COOP_BASE_URL: z
+      .url()
+      .default('https://coop.obyte.org')
+      .transform((s) => s.replace(/\/+$/, '')),
+    // Public base URL of this API, used in Discord messages (e.g. <PUBLIC_BASE_URL>/pair).
+    // No default: a wrong fallback would put broken localhost links into public messages,
+    // so fail loudly at startup instead.
+    PUBLIC_BASE_URL: z.url().transform((s) => s.replace(/\/+$/, '')),
+    // Full obyte: pairing URI of the Discord attestation bot; GET /pair 302-redirects here.
+    ATTESTATION_BOT_PAIRING_URI: z
+      .string()
+      .regex(/^obyte(-tn)?:.+/, 'must be an obyte: (or obyte-tn:) pairing URI')
+      .default('obyte:Ama48/uKO+/Tjv28zFKwElBO4SEQNuWAM1VPJkl4DTZO@obyte.org/bb#0000'),
     // HTTP
     PORT: z.coerce.number().int().positive().default(3000),
     // Per-IP rate limit (0 disables it).
