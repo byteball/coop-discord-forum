@@ -34,7 +34,7 @@ export const env = createEnv({
     // No default: a wrong fallback would put broken localhost links into public messages,
     // so fail loudly at startup instead.
     PUBLIC_BASE_URL: z.url().transform((s) => s.replace(/\/+$/, '')),
-    // Full obyte: pairing URI of the Discord attestation bot; GET /pair 302-redirects here.
+    // Full obyte: pairing URI of the Discord attestation bot; the GET /pair page opens it.
     ATTESTATION_BOT_PAIRING_URI: z
       .string()
       .regex(/^obyte(-tn)?:.+/, 'must be an obyte: (or obyte-tn:) pairing URI')

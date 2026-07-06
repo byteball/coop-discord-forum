@@ -4,7 +4,7 @@ import { Scalar } from '@scalar/hono-api-reference'
 import { posts } from './routes/posts.js'
 import { createApi } from './factory.js'
 import { rateLimit } from './rateLimit.js'
-import { env } from '../env.js'
+import { pairPageHtml } from './pairPage.js'
 
 export const app = createApi()
 
@@ -28,10 +28,11 @@ const healthRoute = createRoute({
 
 app.openapi(healthRoute, (c) => c.json({ ok: true }, 200))
 
-// Link target for Discord messages: Discord won't render obyte: links, so we 302 to the
-// attestation bot's pairing URI. Deliberately a plain (non-OpenAPI) route — zod-openapi
-// can't naturally model a body-less 302, and this endpoint is for humans clicking a link.
-app.get('/pair', (c) => c.redirect(env.ATTESTATION_BOT_PAIRING_URI, 302))
+// Link target for Discord messages: Discord won't render obyte: links, so this page
+// opens the attestation bot's pairing URI in the wallet (with manual-button and
+// download-link fallbacks). Deliberately a plain (non-OpenAPI) route — it serves HTML
+// for humans clicking a link, not API consumers.
+app.get('/pair', (c) => c.html(pairPageHtml))
 
 app.route('/', posts)
 

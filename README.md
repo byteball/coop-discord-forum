@@ -73,7 +73,7 @@ pnpm db:push           # create the SQLite database from the schema
 | `OBYTE_TESTNET` | `false` | `true` connects to the testnet hub |
 | `COOP_BASE_URL` | `https://coop.obyte.org` | base URL for COOP profile links |
 | `PUBLIC_BASE_URL` | — | **required**, public base URL of this API, used in Discord messages (`<PUBLIC_BASE_URL>/pair`) |
-| `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | `obyte:` pairing URI of the attestation bot; `GET /pair` redirects here |
+| `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | `obyte:` pairing URI of the attestation bot; the `GET /pair` page opens it |
 | `PORT` | `3000` | HTTP server port |
 | `RATE_LIMIT_MAX` | `120` | max requests per IP per window (`0` disables) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | rate-limit window in ms |
@@ -107,7 +107,7 @@ so request/response schemas, validation and the OpenAPI document all come from o
 | Method & path | Description |
 |---|---|
 | `GET /health` | liveness check |
-| `GET /pair` | 302 redirect to the attestation bot's `obyte:` pairing URI (not in the OpenAPI doc) |
+| `GET /pair` | page that opens the attestation bot's `obyte:` pairing URI in the wallet, with a manual button and a [wallet download](https://obyte.org/#download) fallback (not in the OpenAPI doc) |
 | `GET /users/{discordUserId}/posts` | a user's posts — sortable & paginated |
 | `GET /posts/{postId}` | a single post by id |
 | `GET /doc` | the OpenAPI 3.0 document (JSON) |
