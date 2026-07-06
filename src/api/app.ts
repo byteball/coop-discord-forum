@@ -1,6 +1,8 @@
 import { createRoute, z } from '@hono/zod-openapi'
+import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { Scalar } from '@scalar/hono-api-reference'
+import { env } from '../env.js'
 import { posts } from './routes/posts.js'
 import { createApi } from './factory.js'
 import { rateLimit } from './rateLimit.js'
@@ -10,6 +12,17 @@ export const app = createApi()
 
 // Log every incoming request/response.
 app.use('*', logger())
+// CORS before rateLimit so even 429s carry Access-Control-Allow-Origin and stay
+// readable cross-origin. Read-only public API without credentials → '*' is safe;
+// restrict via CORS_ORIGIN where needed.
+app.use(
+  '*',
+  cors({
+    origin: env.CORS_ORIGIN.includes('*') ? '*' : env.CORS_ORIGIN,
+    allowMethods: ['GET'],
+    maxAge: 86400,
+  }),
+)
 // Per-IP rate limit on everything. All routes are public (no auth).
 app.use('*', rateLimit)
 

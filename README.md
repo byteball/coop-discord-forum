@@ -75,6 +75,7 @@ pnpm db:push           # create the SQLite database from the schema
 | `PUBLIC_BASE_URL` | — | **required**, public base URL of this API, used in Discord messages (`<PUBLIC_BASE_URL>/pair`) |
 | `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | `obyte:` pairing URI of the attestation bot; the `GET /pair` page opens it |
 | `PORT` | `3000` | HTTP server port |
+| `CORS_ORIGIN` | `*` | comma-separated list of allowed browser origins (`*` = any; safe for this read-only, credential-less API) |
 | `RATE_LIMIT_MAX` | `120` | max requests per IP per window (`0` disables) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | rate-limit window in ms |
 | `TRUST_PROXY` | `false` | behind a trusted proxy: rate-limit by `X-Forwarded-For` client IP (leave off on direct exposure) |
@@ -138,7 +139,10 @@ open  http://localhost:3000/reference                              # docs UI
 
 All routes are public (no auth). Invalid params return
 `400 { "error": "validation failed", "issues": [...] }` (from the Zod schema); exceeding the rate
-limit returns `429`.
+limit returns `429`. CORS is enabled (`CORS_ORIGIN`, default any origin), so browser apps can call
+the API directly; `guildId` lets them link back to the thread as
+`https://discord.com/channels/<guildId>/<postId>` (`null` on rows ingested before this field
+existed — backfilled at the next startup reconciliation).
 
 Response for a user's posts:
 
@@ -149,6 +153,7 @@ Response for a user's posts:
   "posts": [
     {
       "postId": "1234567890",
+      "guildId": "1122334455667788990",
       "discordUserId": "411516467402506240",
       "obyteAddress": "YQIHCLB2AB43JIMODIE3ZLNAM4FULVLK",
       "title": "Post title",

@@ -41,6 +41,9 @@ export const env = createEnv({
       .default('obyte:Ama48/uKO+/Tjv28zFKwElBO4SEQNuWAM1VPJkl4DTZO@obyte.org/bb#0000'),
     // HTTP
     PORT: z.coerce.number().int().positive().default(3000),
+    // Comma-separated list of allowed browser origins; '*' allows any.
+    // Read-only public API without credentials, so '*' is a safe default.
+    CORS_ORIGIN: csv('*'),
     // Per-IP rate limit (0 disables it).
     RATE_LIMIT_MAX: z.coerce.number().int().min(0).default(120),
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),

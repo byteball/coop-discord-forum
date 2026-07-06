@@ -8,6 +8,7 @@ const clip = (s: string, max: number) => (s.length > max ? s.slice(0, max) : s)
 
 export interface UpsertPostInput {
   postId: string
+  guildId?: string | null
   discordUserId: string
   title: string
   description: string
@@ -25,6 +26,7 @@ export async function upsertPost(input: UpsertPostInput) {
     where: { id: input.postId },
     create: {
       id: input.postId,
+      guildId: input.guildId ?? null,
       discordUserId: input.discordUserId,
       title,
       description,
@@ -37,6 +39,7 @@ export async function upsertPost(input: UpsertPostInput) {
       description,
       deletedAt: null, // we're seeing the thread, so it exists (undo any stale soft-delete)
       // lastActivityAt is advanced separately via touchActivity (monotonic)
+      ...(input.guildId !== undefined ? { guildId: input.guildId } : {}),
       ...(input.obyteAddress !== undefined ? { obyteAddress: input.obyteAddress } : {}),
     },
   })

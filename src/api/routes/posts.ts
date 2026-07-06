@@ -25,6 +25,10 @@ const ReactionCountSchema = z
 const PostSchema = z
   .object({
     postId: z.string().openapi({ example: '1234567890' }),
+    guildId: z.string().nullable().openapi({
+      example: '1122334455667788990',
+      description: 'Discord guild id — build thread links as https://discord.com/channels/{guildId}/{postId}',
+    }),
     discordUserId: z.string().openapi({ example: '411516467402506240' }),
     obyteAddress: z.string().nullable().openapi({ example: 'YQIHCLB2AB43JIMODIE3ZLNAM4FULVLK' }),
     title: z.string().openapi({ example: 'My contribution' }),
@@ -99,6 +103,7 @@ const getPostRoute = createRoute({
 function serialize(post: Post, reactions: ReactionCount[]) {
   return {
     postId: post.id,
+    guildId: post.guildId,
     discordUserId: post.discordUserId,
     obyteAddress: post.obyteAddress,
     title: post.title,

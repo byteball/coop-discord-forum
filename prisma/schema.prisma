@@ -13,6 +13,7 @@ datasource db {
 /// A forum post = a Discord thread under a GuildForum channel.
 model Post {
   id             String   @id // Discord thread id (the post)
+  guildId        String? // Discord guild (server) id — for thread links; backfilled on reconciliation
   discordUserId  String // author's Discord user id (snowflake)
   obyteAddress   String? // attested Obyte address, if the author has an attestation
   title          String

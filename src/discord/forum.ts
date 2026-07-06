@@ -52,6 +52,7 @@ export async function extractPostData(
 
   return {
     postId: thread.id,
+    guildId: thread.guildId,
     discordUserId: thread.ownerId ?? starter?.author.id ?? 'unknown',
     title: thread.name,
     description: starter?.content ?? '',
