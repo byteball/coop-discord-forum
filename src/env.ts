@@ -16,10 +16,13 @@ export const env = createEnv({
     DISCORD_BOT_TOKEN: z.string().min(1, 'DISCORD_BOT_TOKEN is required'),
     DISCORD_FORUM_CHANNEL_IDS: csv(''), // empty => track every GuildForum thread
     // Obyte
-    DISCORD_ATTESTOR_ADDRESS: z
-      .string()
-      .min(1)
-      .default('5KM36CFPBD2QJLVD65PHZG34WEM4RPY2'),
+    // Comma-separated attestors whose attestations map Discord userId -> Obyte
+    // address; the lookup tries them in order and uses the first match.
+    DISCORD_ATTESTOR_ADDRESSES: csv('5KM36CFPBD2QJLVD65PHZG34WEM4RPY2').pipe(
+      z
+        .array(z.string().regex(/^[A-Z2-7]{32}$/, 'must be a 32-character Obyte address'))
+        .min(1, 'at least one attestor address is required'),
+    ),
     OBYTE_TESTNET: z
       .string()
       .optional()
@@ -60,3 +63,13 @@ export const env = createEnv({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
 })
+
+// The default pairing URI points at the mainnet attestation bot, so a testnet
+// deployment that forgets to override it would silently show a wrong-network
+// bot on /pair. Fail loudly at startup instead.
+const expectedScheme = env.OBYTE_TESTNET ? 'obyte-tn:' : 'obyte:'
+if (!env.ATTESTATION_BOT_PAIRING_URI.startsWith(expectedScheme)) {
+  throw new Error(
+    `ATTESTATION_BOT_PAIRING_URI must start with "${expectedScheme}" when OBYTE_TESTNET=${env.OBYTE_TESTNET}`,
+  )
+}

@@ -19,8 +19,8 @@ things in a single process:
 - **HTTP server** (`Hono`) — serves the stored posts.
 
 The Obyte address for a Discord id is resolved via **obyte.js** (`getAttestation` → unit, then
-`getJoint` → the address from the attestation payload) using the attestor in
-`DISCORD_ATTESTOR_ADDRESS`.
+`getJoint` → the address from the attestation payload) using the attestors in
+`DISCORD_ATTESTOR_ADDRESSES` (tried in order, first match wins).
 
 ### Gateway events consumed
 
@@ -45,7 +45,7 @@ The Obyte address for a Discord id is resolved via **obyte.js** (`getAttestation
 
 ```bash
 pnpm install
-cp .env.example .env   # then edit .env (see below)
+cp .env.example.mainnet .env   # or .env.example.testnet — then edit .env (see below)
 pnpm prisma generate   # generate the Prisma Client
 pnpm db:push           # create the SQLite database from the schema
 ```
@@ -64,16 +64,19 @@ pnpm db:push           # create the SQLite database from the schema
 
 ## Environment variables
 
+Ready-made examples: `.env.example.mainnet` (production values) and `.env.example.testnet`
+(testnet hub, testnet attestors, localhost URLs). Copy one to `.env` and edit.
+
 | Variable | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | `file:./prisma/data/contribution-log.db` | SQLite path (relative to the project root) |
 | `DISCORD_BOT_TOKEN` | — | **required**, bot token |
 | `DISCORD_FORUM_CHANNEL_IDS` | empty | comma-separated forum channel ids; empty = all |
-| `DISCORD_ATTESTOR_ADDRESS` | `5KM36CFPBD2QJLVD65PHZG34WEM4RPY2` | Discord→address attestor |
+| `DISCORD_ATTESTOR_ADDRESSES` | `5KM36CFPBD2QJLVD65PHZG34WEM4RPY2` | comma-separated Discord→address attestors, tried in order (first match wins) |
 | `OBYTE_TESTNET` | `false` | `true` connects to the testnet hub |
 | `COOP_BASE_URL` | `https://coop.obyte.org` | base URL for COOP profile links |
 | `PUBLIC_BASE_URL` | — | **required**, public base URL of this API, used in Discord messages (`<PUBLIC_BASE_URL>/pair`) |
-| `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | `obyte:` pairing URI of the attestation bot; the `GET /pair` page opens it |
+| `ATTESTATION_BOT_PAIRING_URI` | `obyte:Ama48/…@obyte.org/bb#0000` | pairing URI of the attestation bot; the `GET /pair` page opens it. Scheme must match the network (`obyte:` mainnet, `obyte-tn:` testnet) — checked at startup |
 | `PORT` | `3000` | HTTP server port |
 | `CORS_ORIGIN` | `*` | comma-separated list of allowed browser origins (`*` = any; safe for this read-only, credential-less API) |
 | `RATE_LIMIT_MAX` | `120` | max requests per IP per window (`0` disables) |

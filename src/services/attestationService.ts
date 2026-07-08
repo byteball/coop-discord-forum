@@ -33,8 +33,9 @@ const toResolution = (value: string | null): AddressResolution =>
  *
  * `getAttestation` returns only the attestation unit hash, so we read the
  * attested address back from that unit's `attestation` message via `getJoint`.
- * `unattested` means the hub confirmed there is no attestation by the configured
- * attestor; `error` means the lookup failed and the answer is unknown.
+ * The configured attestors are tried in order and the first valid match wins.
+ * `unattested` means the hub confirmed there is no attestation by any of the
+ * configured attestors; `error` means a lookup failed and the answer is unknown.
  */
 export async function resolveAddress(discordUserId: string): Promise<AddressResolution> {
   const cached = cache.get(discordUserId)
@@ -46,22 +47,24 @@ export async function resolveAddress(discordUserId: string): Promise<AddressReso
   }
 
   try {
-    const unit = await withTimeout(
-      obyteClient.api.getAttestation({
-        attestor_address: env.DISCORD_ATTESTOR_ADDRESS,
-        field: 'userId',
-        value: discordUserId,
-      }),
-      'getAttestation',
-    )
-    if (!unit) return remember(null)
+    for (const attestor of env.DISCORD_ATTESTOR_ADDRESSES) {
+      const unit = await withTimeout(
+        obyteClient.api.getAttestation({
+          attestor_address: attestor,
+          field: 'userId',
+          value: discordUserId,
+        }),
+        'getAttestation',
+      )
+      if (!unit) continue
 
-    const { joint } = await withTimeout(obyteClient.api.getJoint(unit), 'getJoint')
-    const message = joint.unit.messages.find((m) => m.app === 'attestation')
-    const address = message?.payload?.address
-    // only trust a well-formed Obyte address (valid checksum) before using it
-    const valid = typeof address === 'string' && obyte.utils.isValidAddress(address) ? address : null
-    return remember(valid)
+      const { joint } = await withTimeout(obyteClient.api.getJoint(unit), 'getJoint')
+      const message = joint.unit.messages.find((m) => m.app === 'attestation')
+      const address = message?.payload?.address
+      // only trust a well-formed Obyte address (valid checksum) before using it
+      if (typeof address === 'string' && obyte.utils.isValidAddress(address)) return remember(address)
+    }
+    return remember(null)
   } catch (err) {
     // transient hub/network error — don't cache, allow a later retry
     console.error(`[attestation] lookup failed for userId=${discordUserId}:`, err)
